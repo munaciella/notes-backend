@@ -1,0 +1,15 @@
+/.env
+.DS_Store
+/.idea
+/.vscode
+/.history
+/.next
+/.next/cache
+/.next/static
+/.next/server
+/.next/types
+/.next/trace
+/.next/trace-loader
+/.next/trace-loader.js
+/.next/trace-loader.js.map
+/node_modules
