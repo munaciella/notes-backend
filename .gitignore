@@ -13,3 +13,4 @@
 /.next/trace-loader.js
 /.next/trace-loader.js.map
 /node_modules
+.qodo
