@@ -2,15 +2,15 @@ import 'dotenv/config';
 import express from 'express';
 import { json } from 'body-parser';
 import cors from 'cors';
-//import { clerkMiddleware, requireAuth } from '@clerk/express';
+import { clerkMiddleware, requireAuth } from '@clerk/express';
 import { initDb } from './lib/db';
 import { notesRouter } from './routes/notes';
 
 const app = express();
 
-// 1) CORS: allow your frontend origins
+// CORS
 const devOrigin = 'http://localhost:3000';
-const prodOrigin = process.env.NEXT_PUBLIC_FRONTEND_URL; // you’ll set this in Render
+const prodOrigin = process.env.NEXT_PUBLIC_FRONTEND_URL;
 app.use(cors({
   origin: process.env.NODE_ENV === 'development' ? devOrigin : prodOrigin,
   credentials: true,
@@ -25,9 +25,9 @@ if (!connectionString) {
 }
 initDb(connectionString);
 
-// === DEV‐ONLY AUTH STUB ===
-// This will run for *all* /notes routes and inject userId
-app.use(
+if (process.env.NODE_ENV === 'development') {
+  // DEV: stub so you can keep testing without Clerk
+  app.use(
     '/notes',
     (req: any, _res, next) => {
       req.auth = { userId: 'dev-user', sessionId: '', orgId: null, getToken: async () => '' };
@@ -35,27 +35,13 @@ app.use(
     },
     notesRouter
   );
-
-// if (process.env.NODE_ENV === 'development') {
-//     // DEV: inject a fake req.auth so getAuth(req) works in your routes
-//     app.use(
-//       '/notes',
-//       (req: any, _res, next) => {
-//         req.auth = {
-//           userId: 'dev-user',
-//           sessionId: 'dev-session',
-//           orgId: null,
-//           getToken: async () => '',
-//         };
-//         next();
-//       },
-//       notesRouter
-//     );
-//   } else {
-//     // PROD: real Clerk protection
-//     app.use(clerkMiddleware());
-//     app.use('/notes', requireAuth(), notesRouter);
-//   }
+} else {
+  // PROD: real Clerk protection
+  // 1) Parse & verify the Clerk session on every request
+  app.use(clerkMiddleware());
+  // 2) Block unauthenticated calls to /notes
+  app.use('/notes', requireAuth(), notesRouter);
+}
 
 const port = Number(process.env.PORT) || 4000;
 app.listen(port, () => {
