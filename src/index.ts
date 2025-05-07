@@ -1,11 +1,21 @@
 import 'dotenv/config';
 import express from 'express';
 import { json } from 'body-parser';
+import cors from 'cors';
 //import { clerkMiddleware, requireAuth } from '@clerk/express';
 import { initDb } from './lib/db';
 import { notesRouter } from './routes/notes';
 
 const app = express();
+
+// 1) CORS: allow your frontend origins
+const devOrigin = 'http://localhost:3000';
+const prodOrigin = process.env.NEXT_PUBLIC_FRONTEND_URL; // you’ll set this in Render
+app.use(cors({
+  origin: process.env.NODE_ENV === 'development' ? devOrigin : prodOrigin,
+  credentials: true,
+}));
+
 app.use(json());
 
 // Initialize the database connection
