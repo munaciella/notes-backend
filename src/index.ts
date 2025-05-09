@@ -8,7 +8,6 @@ import { notesRouter } from './routes/notes';
 
 const app = express();
 
-// CORS
 const devOrigin = 'http://localhost:3000';
 const prodOrigin = process.env.NEXT_PUBLIC_FRONTEND_URL;
 app.use(cors({
@@ -18,7 +17,6 @@ app.use(cors({
 
 app.use(json());
 
-// Initialize the database connection
 const connectionString = process.env.DATABASE_URL;
 if (!connectionString) {
   throw new Error('DATABASE_URL is not set');
@@ -26,7 +24,6 @@ if (!connectionString) {
 initDb(connectionString);
 
 if (process.env.NODE_ENV === 'development') {
-  // DEV: stub so you can keep testing without Clerk
   app.use(
     '/notes',
     (req: any, _res, next) => {
@@ -36,12 +33,19 @@ if (process.env.NODE_ENV === 'development') {
     notesRouter
   );
 } else {
-  // PROD: real Clerk protection
-  // 1) Parse & verify the Clerk session on every request
+  
   app.use(clerkMiddleware());
-  // 2) Block unauthenticated calls to /notes
+
   app.use('/notes', requireAuth(), notesRouter);
 }
+
+app.use((err: any, req: any, res: any, next: any) => {
+  console.error('🔥 Uncaught error:', err);
+  res
+  .status(err.status || 500)
+  .json({ error: err.message || 'Internal Server Error' });
+});
+
 
 const port = Number(process.env.PORT) || 4000;
 app.listen(port, () => {
