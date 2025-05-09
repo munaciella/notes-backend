@@ -28,8 +28,8 @@ router.post(
     // const summary = completion.choices[0]?.message?.content ?? '';
 
     const result = await db.query(
-      `INSERT INTO notes (user_id, title, content, summary, tags)
-       VALUES ($1,$2,$3,$4,$5) RETURNING *`,
+      `INSERT INTO notes (user_id, title, content, tags)
+       VALUES ($1,$2,$3,$4) RETURNING *`,
       [userId, title, content, tags]
     );
 
