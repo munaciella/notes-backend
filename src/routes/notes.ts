@@ -18,19 +18,19 @@ router.post(
     const db = getDb();
     const { title, content, tags = [] } = req.body;
 
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-3.5-turbo',
-      messages: [
-        { role: 'system', content: 'Summarize the following note in one paragraph:' },
-        { role: 'user', content },
-      ],
-    });
-    const summary = completion.choices[0]?.message?.content ?? '';
+    // const completion = await openai.chat.completions.create({
+    //   model: 'gpt-3.5-turbo',
+    //   messages: [
+    //     { role: 'system', content: 'Summarize the following note in one paragraph:' },
+    //     { role: 'user', content },
+    //   ],
+    // });
+    // const summary = completion.choices[0]?.message?.content ?? '';
 
     const result = await db.query(
       `INSERT INTO notes (user_id, title, content, summary, tags)
        VALUES ($1,$2,$3,$4,$5) RETURNING *`,
-      [userId, title, content, summary, tags]
+      [userId, title, content, tags]
     );
 
     res.status(201).json(result.rows[0]);
@@ -129,5 +129,46 @@ router.delete(
     res.status(204).send();
   }
 );
+
+router.post('/:id/summarize', async (req: Request, res: Response): Promise<void> => {
+  const { userId } = getAuth(req);
+  if (!userId) {
+    res.status(401).json({ error: 'Unauthorized' });
+    return;
+  }
+
+  const db = getDb();
+  const { id } = req.params;
+
+  const { rows } = await db.query(
+    `SELECT content FROM notes WHERE id = $1 AND user_id = $2`,
+    [id, userId]
+  );
+  if (rows.length === 0) {
+    res.status(404).json({ error: 'Note not found' });
+    return;
+  }
+  const content = rows[0].content;
+
+  const completion = await openai.chat.completions.create({
+    model: 'gpt-3.5-turbo',
+    messages: [
+      { role: 'system', content: 'Summarize the following note in one paragraph:' },
+      { role: 'user', content },
+    ],
+  });
+  const summary = completion.choices[0]?.message?.content ?? '';
+
+  const updated = await db.query(
+    `UPDATE notes
+       SET summary = $1,
+           updated_at = now()
+     WHERE id = $2 AND user_id = $3
+     RETURNING *`,
+    [summary, id, userId]
+  );
+
+  res.json(updated.rows[0]);
+});
 
 export { router as notesRouter };
