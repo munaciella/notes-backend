@@ -1,3 +1,4 @@
+// src/index.ts
 import 'dotenv/config';
 import express from 'express';
 import { json } from 'body-parser';
@@ -6,12 +7,14 @@ import { clerkMiddleware, requireAuth } from '@clerk/express';
 import { initDb } from './lib/db';
 import { notesRouter } from './routes/notes';
 
-const app = express();
+export const app = express();
 
 const devOrigin = 'http://localhost:3000';
 const prodOrigin = process.env.NEXT_PUBLIC_FRONTEND_URL;
 app.use(cors({
-  origin: process.env.NODE_ENV === 'development' ? devOrigin : prodOrigin,
+  origin: (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test')
+    ? devOrigin
+    : prodOrigin,
   credentials: true,
 }));
 
@@ -23,31 +26,36 @@ if (!connectionString) {
 }
 initDb(connectionString);
 
-if (process.env.NODE_ENV === 'development') {
+if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
   app.use(
     '/notes',
     (req: any, _res, next) => {
-      req.auth = { userId: 'dev-user', sessionId: '', orgId: null, getToken: async () => '' };
+      req.auth = {
+        userId: 'dev-user',
+        sessionId: 'dev-session',
+        orgId: null,
+        getToken: async () => '',
+      };
       next();
     },
     notesRouter
   );
 } else {
-  
-  app.use(clerkMiddleware());
 
+  app.use(clerkMiddleware());
   app.use('/notes', requireAuth(), notesRouter);
 }
 
-app.use((err: any, req: any, res: any, next: any) => {
+app.use((err: any, _req: any, res: any, _next: any) => {
   console.error('🔥 Uncaught error:', err);
   res
-  .status(err.status || 500)
-  .json({ error: err.message || 'Internal Server Error' });
+    .status(err.status || 500)
+    .json({ error: err.message || 'Internal Server Error' });
 });
 
-
-const port = Number(process.env.PORT) || 4000;
-app.listen(port, () => {
-  console.log(`🚀 Backend running on http://localhost:${port}`);
-});
+if (process.env.NODE_ENV !== 'test') {
+  const port = Number(process.env.PORT) || 4000;
+  app.listen(port, () => {
+    console.log(`🚀 Backend running on http://localhost:${port}`);
+  });
+}

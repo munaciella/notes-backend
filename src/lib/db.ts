@@ -10,3 +10,7 @@ export function getDb() {
   if (!pool) throw new Error('Database not initialized');
   return pool;
 }
+
+export function closeDb() {
+  return pool.end();
+}
